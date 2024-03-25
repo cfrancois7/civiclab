@@ -26,6 +26,12 @@ def check_change_data():
 ui.timer(1.0, check_change_data)
 
 
+def color_apply():
+    ui.colors(
+        primary="#c4a45a", secondary="#53B689", accent="#111B1E", positive="#53B689"
+    )
+
+
 ########
 # LAYOUT
 ########
@@ -33,7 +39,9 @@ ui.timer(1.0, check_change_data)
 
 @ui.page("/")
 def page_import():
+    ui.page_title("Perspectiva")
     add_header()
+    color_apply()
     with ui.column().classes("gap-4 md:gap-8 pt-32"):
         title("Perspectiva")
         subtitle("Une plateforme pour démocratiser la consultation !")
@@ -55,6 +63,8 @@ def page_import():
 
 @ui.page("/llm")
 def page_extract():
+    ui.page_title("Perspectiva")
+    color_apply()
     add_header()
     with ui.column().classes("w-full p-8 lg:p-16 max-w-[1600px] mx-auto"):
         section_heading(
