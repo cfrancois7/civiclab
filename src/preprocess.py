@@ -2,7 +2,9 @@ from nicegui import ui, events, app
 from io import StringIO
 import logging
 from pandas import read_csv
-from state import State
+import plotly.graph_objects as go
+import plotly.express as px
+import numpy as np
 
 
 ##########
@@ -48,7 +50,7 @@ def update_table(data_state):
 def valid_data(data_state, upload):
     validated_data = upload.data.loc[:, selected_columns.value]
     data_state.validated = True
-    data_state.validated_data = validated_data
+    data_state.data = validated_data
     ui.notify(f"Data validated! You have selected:\n{selected_columns.value}")
 
 
@@ -62,13 +64,30 @@ def deselect_all():
     selected_columns.set_value([])
 
 
+def create_plot(data):
+    # plot the statistics of the images
+    col = dropdown_select.value
+    contributions = data.loc[:, col].dropna().values
+    words_contribution = [len(c.split(" ")) for c in contributions]
+
+    with ui.row().classes("flex-1 overflow-x-auto"):
+        title = f"{col}"
+        fig = px.histogram(
+            x=np.log10(words_contribution),
+            log_y=True,
+            title=title,
+        )
+        fig.update_layout(xaxis_title_text="log distribution of length")
+        plot = ui.plotly(fig)
+
+
 ########
 # LAYOUT
 ########
 @ui.refreshable
 def section_data(data_state):
     global selected_columns, table, dropdown_select, upload
-    global separator_input
+    global separator_input, button_plot
     # UPLOAD THE DATA
     with ui.column():
         ui.markdown(
@@ -106,8 +125,19 @@ def section_data(data_state):
                     columns=[], rows=[], pagination={"rowsPerPage": 5}
                 ).classes("max-w-screen-lg  overflow-x-auto")
                 table.on("rowClick", lambda row: select_row(data_state, row))
+            ui.markdown(
+                "Sélectionner une columne, puis une ligne du tableau pour afficher la valeur."
+            ).classes("gap-2 text-md")
+            dropdown_select = ui.select(options=[]).classes("text-lg")
 
-            dropdown_select = ui.select(options=[])
-            ui.label().bind_text_from(data_state, "example").classes("italic justify")
-
-            ui.button("Valid", on_click=lambda e: valid_data(data_state, upload))
+            with ui.row().classes("flex flex-row w-full"):
+                with ui.scroll_area().classes("flex-1 overflow-x-auto border"):
+                    ui.markdown().bind_content_from(data_state, "example").classes(
+                        "italic justify gap-1 text-lg"
+                    )
+            # calculate the statistics for the selected row
+            plot = None
+            button_plot = ui.button(
+                "Calculer les statistiques",
+                on_click=lambda e: create_plot(upload.data),
+            )
