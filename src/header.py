@@ -1,5 +1,14 @@
 from nicegui import ui
 from typing import Optional
+from pathlib import Path
+
+HEADER_HTML = (Path(__file__).parent / "static" / "header.html").read_text()
+STYLE_CSS = (Path(__file__).parent / "static" / "style.css").read_text()
+
+
+def add_head_html() -> None:
+    """Add the code from header.html and reference style.css."""
+    ui.add_head_html(HEADER_HTML + f"<style>{STYLE_CSS}</style>")
 
 
 def add_header(menu: Optional[ui.left_drawer] = None) -> None:
