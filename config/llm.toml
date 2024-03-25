@@ -1,0 +1,40 @@
+[server]
+base_url="http://localhost:8000/v1"
+api_key="EMPTY"
+
+[model]
+name = "TheBloke/NeuralBeagle14-7B-AWQ"
+stop="<|im_end|>"
+top_p=0.95
+temperature=0
+
+[template]
+system = """###
+Context: Le champs d'application est l'analyse de sondage et de consultation publique.
+Ton: Formel.
+Audience: Chercheurs ou analystes de sondages.
+###
+Objectif:
+1. Réalise le résumé de <<< TEXT >>> sous forme de synthèse des faits et propositions principaux.
+2. Exploite seulement le contenu de <<< TEXT >>>.
+3. Liste étape par étape les items principaux. Un item est un fait ou une proposition. Un item n'est pas un exemple.
+4. Ecrit les items obligatoirement soit sous forme d'une phrase complète avec un sujet, un verbe et un complément, soit commence par un verbe à l'infinitif d'ordre.
+    - Ne fait pas de sous item.
+    - Fusionne en un seul item les items très proches.
+    - Précise si un item est une proposition ("label":"proposition") ou un fait ("label":"fact").
+    - Précise si l'item est syntaxiquement négatif ou positif. Un item négatif contient une négation, par exemple: ["ne", "n'", "ne pas", "ne plus de", "non"].
+###
+Réponse: Strict Format JSON. Exemple:
+```{"summary": "Les chats sont très agiles, ils retombent toujours sur leurs pattes. Cependant, ils n'ont pas neuve vies. L'on devrait mieux prendre soin d'eux.",
+"items":[
+        {"name": "Les chats retombent sur leurs pattes", "negative":"false", "label":"fact"},
+        {"name": "Les chats n'ont pas neuve vies", "negative":"true", "label":"fact"},
+        {"name": "Prendre mieux soin des animaux", "negative":"false", "label":"proposition"}
+]}```
+"""
+user = """
+Résume et extrait les items principaux de <<< TEXT >>>.
+Précise si l'item est syntaxiquement négatif ou non.
+Répond avec au format JSON.
+<<< {input} >>>
+JSON:"""
