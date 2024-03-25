@@ -1,0 +1,15 @@
+<meta
+  name="description"
+  content="Perspectiva is an application to give expression to your democratic consultation data."
+/>
+<meta name="theme-color" content="#c4a45a" />
+
+<script>
+  window.onscroll = () => {
+    if (document.querySelector(".q-dialog__backdrop")) return;
+    const header = document.querySelector(".q-header");
+    if (document.documentElement.scrollTop > 50) header.classList.add("fade");
+    else header.classList.remove("fade");
+  };
+</script>
+<script src="/static/fuse.js@7.0.0"></script>
