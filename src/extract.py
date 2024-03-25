@@ -13,14 +13,6 @@ COLUMNS = [
 
 LLM_STATE = State(on_going=False)
 
-with open("./configs/llm.toml", "rb") as file:
-    configs = tomllib.load(file)
-
-CLIENT = AsyncOpenAI(
-    base_url=configs["server"]["base_url"],
-    api_key=configs["server"]["api_key"],
-)
-
 
 ##########
 # FUNCTION
@@ -47,34 +39,85 @@ def select_row(state, row):
     content_orig.set_content(msg)
 
 
-async def extraction_llm():
+async def query_llm():
+    model = radio_llm.value
+
     LLM_STATE.on_going = True
     ui.notify("Run LLM on going ...")
     input = content_orig.content.split("**Contenu original :**  \n\n")[-1][1:-1]
     logging.info(input)
 
-    completion = await CLIENT.chat.completions.create(
-        model=configs["model"]["name"],
-        messages=[
-            {"role": "system", "content": configs["template"]["system"]},
-            {
-                "role": "user",
-                "content": configs["template"]["user"].format(input=input),
-            },
-        ],
-        stop=configs["model"]["stop"],
-        top_p=configs["model"]["top_p"],
-        temperature=configs["model"]["temperature"],
-    )
-    output = completion.choices[0].message.content.split("```")[1]
+    if model == "local":
+        output = await run_local_llm(input)
+    elif model == "GPT-3.5 Turbo":
+        output = await run_openai_llm(input, "gpt-3.5-turbo")
+    elif model == "GPT-4 Turbo":
+        output = await run_openai_llm(input, "gpt-4-turbo-preview")
+
     msg = f"""**Extrait des idées principales :**
     ```python
     {output}
     ```
     """
     LLM_STATE.on_going = False
-    logging.info(msg)
     content_extract.set_content(msg)
+
+
+async def run_local_llm(input):
+    with open("./config/local_llm.toml", "rb") as file:
+        configs = tomllib.load(file)
+
+    client = AsyncOpenAI(
+        base_url=configs["server"]["base_url"],
+        api_key=configs["server"]["api_key"],
+    )
+
+    system_message = configs["template"]["system"]
+    user_message = configs["template"]["user"].format(input=input)
+
+    completion = await client.chat.completions.create(
+        model=configs["model"]["name"],
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_message},
+        ],
+        stop=configs["model"]["stop"],
+        top_p=configs["model"]["top_p"],
+        temperature=configs["model"]["temperature"],
+    )
+
+    content = completion.choices[0].message.content
+    logging.info(content)
+
+    return content.split("```")[1]
+
+
+async def run_openai_llm(input, model_name):
+    with open("./config/openai.toml", "rb") as file:
+        configs = tomllib.load(file)
+
+    client = AsyncOpenAI(
+        api_key=configs["server"]["api_key"],
+    )
+
+    system_message = configs["template"]["system"]
+    user_message = configs["template"]["user"].format(input=input)
+
+    completion = await client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_message},
+        ],
+        top_p=configs["model"]["top_p"],
+        temperature=configs["model"]["temperature"],
+        response_format=configs["model"]["response_format"],
+    )
+
+    content = completion.choices[0].message.content
+    logging.info(content)
+
+    return content
 
 
 ##########
@@ -82,7 +125,7 @@ async def extraction_llm():
 ##########
 @ui.refreshable
 def section_extract(data_state):
-    global table_extract, content_orig, content_extract, spinner
+    global table_extract, content_orig, content_extract, spinner, radio_llm
     # to remove after bug test
     ui.button("load valid data", on_click=lambda e: load_valid_data(data_state))
     with ui.column().bind_visibility(data_state, "validated"):
@@ -97,5 +140,9 @@ def section_extract(data_state):
             with ui.scroll_area().classes("flex-1 overflow-x-auto border"):
                 content_extract = ui.markdown("**Extrait des idées principales :**")
         with ui.row():
-            ui.button("Extraction", on_click=extraction_llm)
+            ui.button("Extraction", on_click=query_llm)
             spinner = ui.spinner(size="lg").bind_visibility(LLM_STATE, "on_going")
+            ui.markdown("LLM model:")
+            radio_llm = ui.radio(
+                ["local", "GPT-3.5 Turbo", "GPT-4 Turbo"], value="local"
+            ).props("inline")
