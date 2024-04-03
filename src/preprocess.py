@@ -57,28 +57,65 @@ def valid_data(data_state, upload):
 def select_row(data_state, row):
     selected_row = row.args[1]
     key = dropdown_select.value
-    data_state.example = selected_row[key]
+    selection = selected_row.get(key)
+    if selection is None:
+        selection = """```
+        WARNING: no contribution for this selection.
+        
+        Select another row.
+        ```"""
+    data_state.example = selection
 
 
 def deselect_all():
     selected_columns.set_value([])
 
 
-def create_plot(data):
-    # plot the statistics of the images
+def update_stats_plot():
+    global fig_stats, plot_stats, fig_price, plot_price
+    # STATISTICS
+    ## parse data
+    data = upload.data
     col = dropdown_select.value
     contributions = data.loc[:, col].dropna().values
     words_contribution = [len(c.split(" ")) for c in contributions]
+    length_character = [len(c) for c in contributions]
 
-    with ui.row().classes("flex-1 overflow-x-auto"):
-        title = f"{col}"
-        fig = px.histogram(
+    ## reset plot trace
+    fig_stats.data = []
+    # fig.layout = {}
+
+    ## reset plot trace
+    traces = list(
+        px.histogram(
             x=np.log10(words_contribution),
             log_y=True,
-            title=title,
-        )
-        fig.update_layout(xaxis_title_text="log distribution of length")
-        plot = ui.plotly(fig)
+        ).select_traces()
+    )[0]
+    fig_stats.add_trace(traces)
+    plot_stats.update()
+
+    # PRICE
+    length_token = np.array(length_character) / 3
+    price_context = 0.5 / 1e6
+    price_generation = 1.5 / 1e6
+    prices = (length_token + 536) * price_context + length_token * 2 * price_generation
+
+    ## reset plot trace
+    fig_price.data = []
+    # fig.layout = {}
+
+    ## reset plot trace
+    traces = list(
+        px.histogram(
+            x=prices,
+            log_y=True,
+        ).select_traces()
+    )[0]
+    fig_price.add_trace(traces)
+    plot_price.update()
+
+    button_plot.active = True
 
 
 ########
@@ -88,56 +125,80 @@ def create_plot(data):
 def section_data(data_state):
     global selected_columns, table, dropdown_select, upload
     global separator_input, button_plot
-    # UPLOAD THE DATA
-    with ui.column():
+
+    ## UPLOAD THE DATA
+    ui.markdown(
+        """
+        La solution est compatible avec des fichiers `.csv` et `.json` qui
+        représentent la majorité des formats d'exportation disponibles sur 
+        les solutions de consultation.
+        """
+    ).classes("gap-2 bold-links arrow-links text-lg")
+    separator_input = ui.input("Separator of the CSV", value=",")
+    upload = ui.upload(on_upload=lambda e: upload_csv(e, data_state))
+    upload.check = False
+
+    names = [""]
+    ## IF OK LOAD THE MENU
+    with ui.row().bind_visibility(upload, "check"):
+        selected_columns = (
+            ui.select(
+                names,
+                multiple=True,
+                value=names,
+                label="Select columns",
+                on_change=lambda e: update_table(data_state),
+            )
+            .props("use-chips")
+            .classes("max-w-screen-lg")
+        )
+        ui.button("Deselect all", on_click=deselect_all)
+
+        table = ui.table(columns=[], rows=[], pagination={"rowsPerPage": 5}).classes(
+            "max-w-screen-lg  overflow-x-auto"
+        )
+        table.on("rowClick", lambda row: select_row(data_state, row))
+
+        ## DISPLAY TEXT FROM SELECTION
         ui.markdown(
-            """
-            La solution est compatible avec des fichiers `.csv` et `.json` qui
-            représentent la majorité des formats d'exportation disponibles sur 
-            les solutions de consultation.
-            """
-        ).classes("gap-2 bold-links arrow-links text-lg")
-        with ui.row():
-            separator_input = ui.input("Separator of the CSV", value=",")
-
-        with ui.row():
-            upload = ui.upload(on_upload=lambda e: upload_csv(e, data_state))
-            upload.check = False
-
-        names = [""]
-        # IF OK LOAD THE MENU
-        with ui.column().bind_visibility(upload, "check"):
-            selected_columns = (
-                ui.select(
-                    names,
-                    multiple=True,
-                    value=names,
-                    label="Select columns",
-                    on_change=lambda e: update_table(data_state),
+            "Sélectionner une columne, puis une ligne du tableau pour afficher la valeur."
+        ).classes("gap-2 text-md")
+        dropdown_select = ui.select(options=[]).classes("text-lg")
+        with ui.row().classes("flex flex-row w-full"):
+            with ui.scroll_area().classes("flex-1 overflow-x-auto border"):
+                ui.markdown().bind_content_from(data_state, "example").classes(
+                    "italic justify gap-1 text-lg"
                 )
-                .props("use-chips")
-                .classes("max-w-screen-lg")
-            )
-            ui.button("Deselect all", on_click=deselect_all)
 
-            with ui.row():
-                table = ui.table(
-                    columns=[], rows=[], pagination={"rowsPerPage": 5}
-                ).classes("max-w-screen-lg  overflow-x-auto")
-                table.on("rowClick", lambda row: select_row(data_state, row))
-            ui.markdown(
-                "Sélectionner une columne, puis une ligne du tableau pour afficher la valeur."
-            ).classes("gap-2 text-md")
-            dropdown_select = ui.select(options=[]).classes("text-lg")
-
-            with ui.row().classes("flex flex-row w-full"):
-                with ui.scroll_area().classes("flex-1 overflow-x-auto border"):
-                    ui.markdown().bind_content_from(data_state, "example").classes(
-                        "italic justify gap-1 text-lg"
-                    )
-            # calculate the statistics for the selected row
-            plot = None
-            button_plot = ui.button(
-                "Calculer les statistiques",
-                on_click=lambda e: create_plot(upload.data),
+    ## PLOTS AND STATISTICS
+    with ui.row():
+        button_plot = ui.button(
+            "Calculer les statistiques",
+            on_click=update_stats_plot,
+        )
+        button_plot.active = False
+    with ui.row().bind_visibility(button_plot, "active"):
+        global fig_stats, plot_stats
+        with ui.column():
+            fig_stats = go.Figure()
+            fig_stats.update_layout(
+                # margin=dict(l=0, r=0, t=0, b=0),
+                title_text="""Distribution des taille des contributions en nombre de mot
+                <br>(échelle logarithmique)""",
+                title_font_size=18,
+                xaxis_title="Logarithme 10 (Taille des contributions)",
+                yaxis_title="Occurence",
             )
+            plot_stats = ui.plotly(fig_stats)
+        with ui.row():
+            # TODO: TRANSFOR PLOT INTO BAR PLOT WITH PRICE GPT 3.5 and GPT4
+            global fig_price, plot_price
+            fig_price = go.Figure()
+            fig_price.update_layout(
+                # margin=dict(l=0, r=0, t=0, b=0),
+                title_text="""Distribution du prix du traitement""",
+                title_font_size=18,
+                xaxis_title="Logarithme 10 (Taille des contributions)",
+                yaxis_title="Occurence",
+            )
+            plot_price = ui.plotly(fig_price)
