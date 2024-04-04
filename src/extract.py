@@ -127,18 +127,23 @@ async def run_openai_llm(input, model_name):
 def section_extract(data_state):
     global table_extract, content_orig, content_extract, spinner, radio_llm
     # to remove after bug test
+
     ui.button("load valid data", on_click=lambda e: load_valid_data(data_state))
+    ## ORIGINAL / EXTRACTION AREA
     with ui.column().bind_visibility(data_state, "validated"):
         table_extract = ui.table(
             columns=[], rows=[], pagination={"rowsPerPage": 5}
         ).classes("max-w-screen-lg  overflow-x-auto")
         table_extract.on("rowClick", lambda row: select_row(data_state, row))
 
+    ## ORIGINAL / EXTRACTION AREA
+    with ui.column().bind_visibility(data_state, "validated").classes("w-full"):
         with ui.row().classes("flex flex-row w-full"):
             with ui.scroll_area().classes("flex-1 overflow-x-auto border"):
                 content_orig = ui.markdown("**Contenu original :**")
             with ui.scroll_area().classes("flex-1 overflow-x-auto border"):
                 content_extract = ui.markdown("**Extrait des idées principales :**")
+        ## BUTTON EXCTRACTION
         with ui.row():
             ui.button("Extraction", on_click=query_llm)
             spinner = ui.spinner(size="lg").bind_visibility(LLM_STATE, "on_going")

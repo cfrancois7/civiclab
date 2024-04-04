@@ -5,6 +5,9 @@ from pandas import read_csv
 import plotly.graph_objects as go
 import plotly.express as px
 import numpy as np
+from pandas import DataFrame, MultiIndex
+from style import link_target, section_heading
+from header import add_head_html
 
 
 ##########
@@ -30,8 +33,12 @@ def update_table(data_state):
     table.columns = columns
     table.rows = upload.data.loc[:, selected_columns.value].to_dict("records")
     table.update()
-    dropdown_select.set_options([c["name"] for c in table.columns])
-    dropdown_select.set_value("")
+    dropdown_select.set_options(
+        ["Select a column"] + [c["name"] for c in table.columns]
+    )
+    dropdown_select.set_value("Select a column")
+    dropdown_stats.set_options([c["name"] for c in table.columns])
+    dropdown_stats.set_value("")
     with table.add_slot("top-left"):
 
         def toggle() -> None:
@@ -76,7 +83,7 @@ def update_stats_plot():
     # STATISTICS
     ## parse data
     data = upload.data
-    col = dropdown_select.value
+    col = dropdown_stats.value
     contributions = data.loc[:, col].dropna().values
     words_contribution = [len(c.split(" ")) for c in contributions]
     length_character = [len(c) for c in contributions]
@@ -96,10 +103,24 @@ def update_stats_plot():
     plot_stats.update()
 
     # PRICE
-    length_token = np.array(length_character) / 3
-    price_context = 0.5 / 1e6
-    price_generation = 1.5 / 1e6
-    prices = (length_token + 536) * price_context + length_token * 2 * price_generation
+    model = ["GPT 3.5", "GPT 4"]
+    type_price = ["context", "generation"]
+    price_context = np.array([0.5, 30]) / 1e6
+    price_generation = np.array([1.5, 60]) / 1e6
+    length_token = np.sum(np.array(length_character) / 3)
+    prices_context = (length_token + 536) * price_context
+    prices_generation = length_token * 2 * price_generation
+
+    df_price = (
+        DataFrame(
+            data=np.concatenate([prices_context, prices_generation]),
+            index=MultiIndex.from_product(
+                [model, type_price], names=["model", "token type"]
+            ),
+        )
+        .reset_index()
+        .melt(id_vars=["model", "token type"])
+    )
 
     ## reset plot trace
     fig_price.data = []
@@ -107,12 +128,15 @@ def update_stats_plot():
 
     ## reset plot trace
     traces = list(
-        px.histogram(
-            x=prices,
-            log_y=True,
+        px.bar(
+            df_price,
+            x="model",
+            y="value",
+            color="token type",
         ).select_traces()
-    )[0]
-    fig_price.add_trace(traces)
+    )
+    for trace in traces:
+        fig_price.add_trace(trace)
     plot_price.update()
 
     button_plot.active = True
@@ -126,6 +150,7 @@ def section_data(data_state):
     global selected_columns, table, dropdown_select, upload
     global separator_input, button_plot
 
+    section_heading("Pré-traiter les données", "Explorer vos données")
     ## UPLOAD THE DATA
     ui.markdown(
         """
@@ -140,7 +165,7 @@ def section_data(data_state):
 
     names = [""]
     ## IF OK LOAD THE MENU
-    with ui.row().bind_visibility(upload, "check"):
+    with ui.row().classes("h-screen").bind_visibility(upload, "check"):
         selected_columns = (
             ui.select(
                 names,
@@ -163,42 +188,60 @@ def section_data(data_state):
         ui.markdown(
             "Sélectionner une columne, puis une ligne du tableau pour afficher la valeur."
         ).classes("gap-2 text-md")
-        dropdown_select = ui.select(options=[]).classes("text-lg")
+        dropdown_select = ui.select(
+            options=["Select a column"], value="Select a column"
+        ).classes("text-lg")
         with ui.row().classes("flex flex-row w-full"):
             with ui.scroll_area().classes("flex-1 overflow-x-auto border"):
                 ui.markdown().bind_content_from(data_state, "example").classes(
                     "italic justify gap-1 text-lg"
                 )
+        ui.link(target="#prix").classes("scroll-indicator")
 
     ## PLOTS AND STATISTICS
-    with ui.row():
-        button_plot = ui.button(
-            "Calculer les statistiques",
-            on_click=update_stats_plot,
-        )
-        button_plot.active = False
-    with ui.row().bind_visibility(button_plot, "active"):
-        global fig_stats, plot_stats
-        with ui.column():
-            fig_stats = go.Figure()
-            fig_stats.update_layout(
-                # margin=dict(l=0, r=0, t=0, b=0),
-                title_text="""Distribution des taille des contributions en nombre de mot
-                <br>(échelle logarithmique)""",
-                title_font_size=18,
-                xaxis_title="Logarithme 10 (Taille des contributions)",
-                yaxis_title="Occurence",
-            )
-            plot_stats = ui.plotly(fig_stats)
+
+
+@ui.refreshable
+def section_price():
+    add_head_html()
+    global button_plot
+    with ui.column().bind_visibility(upload, "check"):
+        section_heading("Le prix de l'automatisation", "Des coûts accessibles")
+        link_target("prix")
         with ui.row():
-            # TODO: TRANSFOR PLOT INTO BAR PLOT WITH PRICE GPT 3.5 and GPT4
-            global fig_price, plot_price
-            fig_price = go.Figure()
-            fig_price.update_layout(
-                # margin=dict(l=0, r=0, t=0, b=0),
-                title_text="""Distribution du prix du traitement""",
-                title_font_size=18,
-                xaxis_title="Logarithme 10 (Taille des contributions)",
-                yaxis_title="Occurence",
+            global dropdown_stats
+            dropdown_stats = (
+                ui.select(options=["Select a column"], value="Select a column")
+                .classes("text-lg")
+                .classes("max-w-screen-lg")
             )
-            plot_price = ui.plotly(fig_price)
+        with ui.row():
+            button_plot = ui.button(
+                "Calculer les statistiques",
+                on_click=update_stats_plot,
+            )
+            button_plot.active = False
+        with ui.row().bind_visibility(button_plot, "active"):
+            global fig_stats, plot_stats
+            with ui.column():
+                fig_stats = go.Figure()
+                fig_stats.update_layout(
+                    # margin=dict(l=0, r=0, t=0, b=0),
+                    title_text="""Distribution des taille des contributions en nombre de mot
+                    <br>(échelle logarithmique)""",
+                    title_font_size=18,
+                    xaxis_title="Logarithme 10 (Taille des contributions)",
+                    yaxis_title="Occurence",
+                )
+                plot_stats = ui.plotly(fig_stats)
+            with ui.row():
+                # TODO: TRANSFOR PLOT INTO BAR PLOT WITH PRICE GPT 3.5 and GPT4
+                global fig_price, plot_price
+                fig_price = go.Figure()
+                fig_price.update_layout(
+                    # margin=dict(l=0, r=0, t=0, b=0),
+                    title_text="""Prix du traitement de la question en $ US""",
+                    title_font_size=18,
+                    yaxis_title="Total price ($ US)",
+                )
+                plot_price = ui.plotly(fig_price)

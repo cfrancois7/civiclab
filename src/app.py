@@ -1,7 +1,7 @@
 import logging
 from nicegui import ui
 from pathlib import Path
-from preprocess import section_data
+from preprocess import section_data, section_price
 from extract import section_extract
 from state import State
 from header import add_header
@@ -45,7 +45,7 @@ def page_import():
     with ui.column().classes("gap-4 md:gap-8 pt-32"):
         title("Perspectiva")
         subtitle("Une plateforme pour démocratiser la consultation !")
-        ui.link(target="#why").classes("scroll-indicator")
+        ui.link(target="#why")  # .classes("scroll-indicator")
 
     with ui.column().classes("w-full p-8 lg:p-16 max-w-[1600px] mx-auto"):
         link_target("why", "-50px")
@@ -57,8 +57,8 @@ def page_import():
 
     with ui.column().classes("w-full p-8 lg:p-16 max-w-[1600px] mx-auto"):
         link_target("load_data", "-50px")
-        section_heading("Pré-traiter les données", "Explorer vos données")
         section_data(DATA_STATE)
+        section_price()
 
 
 @ui.page("/llm")
