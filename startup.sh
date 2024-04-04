@@ -1,0 +1,1 @@
+uvicorn src.main:app --reload --log-level debug --port 8000
