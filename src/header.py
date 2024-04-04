@@ -13,7 +13,12 @@ def add_head_html() -> None:
 
 def add_header(menu: Optional[ui.left_drawer] = None) -> None:
     """Create the page header."""
-    menu_items = {"Why?": "/#why", "Load data": "/#load_data", "llm": "/llm"}
+    menu_items = {
+        "Pourquoi ?": "/why",
+        "Visualiser les données": "/load_data",
+        "L'usage de l'IA": "/llm",
+        "Etude de cas": "/study_case",
+    }
 
     with ui.header().classes("items-center duration-200 p-0 px-4 no-wrap").style(
         "box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1)"

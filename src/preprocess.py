@@ -1,13 +1,10 @@
-from nicegui import ui, events, app
+from nicegui import ui, events
 from io import StringIO
 import logging
 from pandas import read_csv
-import plotly.graph_objects as go
-import plotly.express as px
-import numpy as np
-from pandas import DataFrame, MultiIndex
-from style import link_target, section_heading
-from header import add_head_html
+
+from .style import link_target, section_heading
+from .header import add_head_html
 
 
 ##########
@@ -16,7 +13,7 @@ from header import add_head_html
 def upload_csv(e: events.UploadEventArguments, data_state):
     content = StringIO(e.content.read().decode("utf-8"))
     data = read_csv(content, sep=separator_input.value, low_memory=False)
-    upload.data = data
+    data_state.validated_data = data
     upload.check = True
     columns = list(data.columns)
     selected_columns.set_options(columns)
@@ -31,14 +28,16 @@ def update_table(data_state):
         for col in selected_columns.value
     ]
     table.columns = columns
-    table.rows = upload.data.loc[:, selected_columns.value].to_dict("records")
+    table.rows = (
+        data_state.validated_data.iloc[:200]
+        .loc[:, selected_columns.value]
+        .to_dict("records")
+    )
     table.update()
     dropdown_select.set_options(
         ["Select a column"] + [c["name"] for c in table.columns]
     )
     dropdown_select.set_value("Select a column")
-    dropdown_stats.set_options([c["name"] for c in table.columns])
-    dropdown_stats.set_value("")
     with table.add_slot("top-left"):
 
         def toggle() -> None:
@@ -52,13 +51,6 @@ def update_table(data_state):
         ).props("flat")
     logging.info(columns)
     data_state.refresh_all = True
-
-
-def valid_data(data_state, upload):
-    validated_data = upload.data.loc[:, selected_columns.value]
-    data_state.validated = True
-    data_state.data = validated_data
-    ui.notify(f"Data validated! You have selected:\n{selected_columns.value}")
 
 
 def select_row(data_state, row):
@@ -78,70 +70,6 @@ def deselect_all():
     selected_columns.set_value([])
 
 
-def update_stats_plot():
-    global fig_stats, plot_stats, fig_price, plot_price
-    # STATISTICS
-    ## parse data
-    data = upload.data
-    col = dropdown_stats.value
-    contributions = data.loc[:, col].dropna().values
-    words_contribution = [len(c.split(" ")) for c in contributions]
-    length_character = [len(c) for c in contributions]
-
-    ## reset plot trace
-    fig_stats.data = []
-    # fig.layout = {}
-
-    ## reset plot trace
-    traces = list(
-        px.histogram(
-            x=np.log10(words_contribution),
-            log_y=True,
-        ).select_traces()
-    )[0]
-    fig_stats.add_trace(traces)
-    plot_stats.update()
-
-    # PRICE
-    model = ["GPT 3.5", "GPT 4"]
-    type_price = ["context", "generation"]
-    price_context = np.array([0.5, 30]) / 1e6
-    price_generation = np.array([1.5, 60]) / 1e6
-    length_token = np.sum(np.array(length_character) / 3)
-    prices_context = (length_token + 536) * price_context
-    prices_generation = length_token * 2 * price_generation
-
-    df_price = (
-        DataFrame(
-            data=np.concatenate([prices_context, prices_generation]),
-            index=MultiIndex.from_product(
-                [model, type_price], names=["model", "token type"]
-            ),
-        )
-        .reset_index()
-        .melt(id_vars=["model", "token type"])
-    )
-
-    ## reset plot trace
-    fig_price.data = []
-    # fig.layout = {}
-
-    ## reset plot trace
-    traces = list(
-        px.bar(
-            df_price,
-            x="model",
-            y="value",
-            color="token type",
-        ).select_traces()
-    )
-    for trace in traces:
-        fig_price.add_trace(trace)
-    plot_price.update()
-
-    button_plot.active = True
-
-
 ########
 # LAYOUT
 ########
@@ -150,22 +78,59 @@ def section_data(data_state):
     global selected_columns, table, dropdown_select, upload
     global separator_input, button_plot
 
-    section_heading("Pré-traiter les données", "Explorer vos données")
-    ## UPLOAD THE DATA
-    ui.markdown(
-        """
-        La solution est compatible avec des fichiers `.csv` et `.json` qui
-        représentent la majorité des formats d'exportation disponibles sur 
-        les solutions de consultation.
-        """
-    ).classes("gap-2 bold-links arrow-links text-lg")
-    separator_input = ui.input("Separator of the CSV", value=",")
-    upload = ui.upload(on_upload=lambda e: upload_csv(e, data_state))
-    upload.check = False
+    add_head_html()
+    with ui.row().classes(
+        """min-h-screen no-wrap
+            justify-center items-center flex-col md:flex-row
+            py-20 px-8
+            lg:px-16
+            gap-8 sm:gap-16 md:gap-8 lg:gap-16"""
+    ):
+        with ui.column():
+            section_heading("Pré-traiter les données", "Explorer vos données")
+            ## UPLOAD THE DATA
+            ui.markdown(
+                """
+                Les données de consultation peuvent se retrouver sous de nombreux formats.
+                Ces formats dépendent des solutions de consultation publiques qui ont chacun leur
+                modules d'exportation différents. Pour le prototype, nous utiliserons les données du Grand Débat National 2019.
+                Ces données sont accessibles via la plateforme
+                [data.gouv.fr](https://www.data.gouv.fr/fr/datasets/grand-debat-national-debats/).
+                
+                Un des premiers enjeux d'une solution pereine est de développer des modules d'importation
+                et de manipulation des données. Ces modules permetteront d'importer les données
+                utiles à l'analyse. Voici un exemple, avec une solution compatible avec des fichiers `.csv` qui
+                représentent la majorité des formats d'exportation disponibles sur 
+                les solutions de consultation.
+                """
+            ).classes("gap-2 bold-links arrow-links text-lg")
+            separator_input = ui.input("Separator of the CSV", value=",")
+            upload = ui.upload(on_upload=lambda e: upload_csv(e, data_state))
+            upload.check = False
 
-    names = [""]
-    ## IF OK LOAD THE MENU
-    with ui.row().classes("h-screen").bind_visibility(upload, "check"):
+            names = [""]
+            ## IF OK LOAD THE MENU
+
+    with ui.row().classes("h-screen flex").bind_visibility(upload, "check"):
+
+        msg = """
+        Le document `.csv` est constitué d'un ensemble de lignes et de colonnes.
+        Les lignes représentent un auteur, ou contributeur, quand les colonnes
+        représentent l'information associé à cet auteur.
+        
+        Parmi ces colonnes, certainnes sont relatives aux systèmes d'acquisitions (`id`, `reference`, `createdAt`,
+        `authorId`, etc...) et des colonnes relatives aux contributions en tant que telle.
+        Les colonnes relatives aux systèmes d'acquisition ne nous sont pas utiles.
+        Nous nous intéresserons uniquement aux colonnes des questions. Pour cela, utilisez les outils ci-dessous pour `Déselectionner tout`, puis
+        sélectionner quelques colonnes des questions. Ensuite, à l'aide de l'interface sous
+        le tableau, vous pouvez sélectionner une colonne et la ligne dont vous voulez observer
+        le contenu. Attention, certaines questions ont été laissées sans réponse. Dans ce cas,
+        un message vous préviendra.
+        
+        *Attention: pour des raisons de performances, seuls les 200 premières lignes sont affichées.*
+        """
+
+        ui.markdown(msg).classes("gap-2 bold-links arrow-links text-lg")
         selected_columns = (
             ui.select(
                 names,
@@ -196,52 +161,3 @@ def section_data(data_state):
                 ui.markdown().bind_content_from(data_state, "example").classes(
                     "italic justify gap-1 text-lg"
                 )
-        ui.link(target="#prix").classes("scroll-indicator")
-
-    ## PLOTS AND STATISTICS
-
-
-@ui.refreshable
-def section_price():
-    add_head_html()
-    global button_plot
-    with ui.column().bind_visibility(upload, "check"):
-        section_heading("Le prix de l'automatisation", "Des coûts accessibles")
-        link_target("prix")
-        with ui.row():
-            global dropdown_stats
-            dropdown_stats = (
-                ui.select(options=["Select a column"], value="Select a column")
-                .classes("text-lg")
-                .classes("max-w-screen-lg")
-            )
-        with ui.row():
-            button_plot = ui.button(
-                "Calculer les statistiques",
-                on_click=update_stats_plot,
-            )
-            button_plot.active = False
-        with ui.row().bind_visibility(button_plot, "active"):
-            global fig_stats, plot_stats
-            with ui.column():
-                fig_stats = go.Figure()
-                fig_stats.update_layout(
-                    # margin=dict(l=0, r=0, t=0, b=0),
-                    title_text="""Distribution des taille des contributions en nombre de mot
-                    <br>(échelle logarithmique)""",
-                    title_font_size=18,
-                    xaxis_title="Logarithme 10 (Taille des contributions)",
-                    yaxis_title="Occurence",
-                )
-                plot_stats = ui.plotly(fig_stats)
-            with ui.row():
-                # TODO: TRANSFOR PLOT INTO BAR PLOT WITH PRICE GPT 3.5 and GPT4
-                global fig_price, plot_price
-                fig_price = go.Figure()
-                fig_price.update_layout(
-                    # margin=dict(l=0, r=0, t=0, b=0),
-                    title_text="""Prix du traitement de la question en $ US""",
-                    title_font_size=18,
-                    yaxis_title="Total price ($ US)",
-                )
-                plot_price = ui.plotly(fig_price)
