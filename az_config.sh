@@ -40,4 +40,4 @@ RUNTIME="PYTHON|3.11"
 # browse to the site
 # az webapp browse --name $SITENAME --resource-group $RESOURCEGROUP
 
-az webapp config set --resource-group $RESOURCEGROUP --name $SITENAME --startup-file "python -m ./src/app.py"
+az webapp config set --resource-group $RESOURCEGROUP --name $SITENAME --startup-file "startup.sh"
