@@ -18,6 +18,7 @@ def add_header(menu: Optional[ui.left_drawer] = None) -> None:
         "Visualiser les données": "/load_data",
         "L'usage de l'IA": "/llm",
         "Etude de cas": "/study_case",
+        "L'avenir du projet": "/future",
     }
 
     with ui.header().classes("items-center duration-200 p-0 px-4 no-wrap").style(

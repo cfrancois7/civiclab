@@ -83,7 +83,13 @@ les phrases négatives des positives."""
             hover_data=hover_data.values[mask].reshape(1, -1),
             color_discrete_sequence=px.colors.qualitative.Alphabet,
         )
-        plot_stats = ui.plotly(fig_clusters).classes("h-400")
+        fig_clusters.update_layout(
+            title_text="""Représentation 2D des contributions.
+            <br>Les idées principales similaires sont proches entre elles. """,
+            title_font_size=15,
+        )
+
+        plot_stats = ui.plotly(fig_clusters).classes("w-2/3 h-96")
         ui.space()
         ## SECTION
         subtitle("Le point des contributions")
@@ -95,4 +101,4 @@ les phrases négatives des positives."""
 
         ui.markdown(msg).classes("gap-2 bold-links arrow-links text-lg")
 
-        ui.image("./data/image.png").classes("w-16")
+        ui.image("./image/image.png").classes("w-2/3 h-96")

@@ -7,6 +7,7 @@ from .state import State
 from .header import add_header, add_head_html
 from .style import section_heading, link_target, subtitle, title
 from .study_case import section_study_case
+from .future import section_future
 from fastapi import FastAPI
 
 path_log = Path("./log").absolute()
@@ -116,6 +117,14 @@ def init(fastapi_app: FastAPI = None) -> None:
         add_header()
         with ui.column().classes("w-full p-8 lg:p-16 max-w-[1600px] mx-auto"):
             section_study_case()
+
+    @ui.page("/future")
+    def page_extract():
+        ui.page_title("Perspectiva")
+        color_apply()
+        add_header()
+        with ui.column().classes("w-full p-8 lg:p-16 max-w-[1600px] mx-auto"):
+            section_future()
 
     if __name__ != "__main__":
         ui.run_with(fastapi_app, mount_path="/app")
