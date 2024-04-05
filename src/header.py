@@ -14,7 +14,7 @@ def add_head_html() -> None:
 def add_header(menu: Optional[ui.left_drawer] = None) -> None:
     """Create the page header."""
     menu_items = {
-        "Pourquoi ?": "/why",
+        "Pourquoi ?": "/",
         "Visualiser les données": "/load_data",
         "L'usage de l'IA": "/llm",
         "Etude de cas": "/study_case",

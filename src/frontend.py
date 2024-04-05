@@ -44,7 +44,7 @@ def init(fastapi_app: FastAPI = None) -> None:
         add_head_html()
         add_header()
         color_apply()
-        with ui.column().classes("w-full p-8 lg:p-16 max-w-[1600px] mx-auto"):
+        with ui.column().classes("w-full p-8 lg:p-16"):
             section_heading(
                 "Simplifier et accélérer le traitement des consultations publiques",
                 "Démocratiser la consultation",
@@ -71,6 +71,11 @@ def init(fastapi_app: FastAPI = None) -> None:
                 """Vous trouverez plus d'information sur la génèse de ce projet et son équipe en cliquant sur ce lien :
                 [cliquez ici](https://drive.google.com/file/d/1_JuBo3rOHl3aEEgfFOuOUb6b_rdC-6TV/view?usp=sharing)"""
             ).classes("gap-2 bold-links arrow-links text-lg")
+
+            with ui.link(
+                target="https://drive.google.com/file/d/1_JuBo3rOHl3aEEgfFOuOUb6b_rdC-6TV/view?usp=sharing"
+            ):
+                ui.image("./image/perspectiva.png").classes("w-80")
 
     @ui.page("/load_data")
     def page_import():
@@ -112,11 +117,11 @@ def init(fastapi_app: FastAPI = None) -> None:
         with ui.column().classes("w-full p-8 lg:p-16 max-w-[1600px] mx-auto"):
             section_study_case()
 
-    # if __name__ != "__main__":
-    #     ui.run_with(fastapi_app, mount_path="/app")
-    ui.run()
+    if __name__ != "__main__":
+        ui.run_with(fastapi_app, mount_path="/app")
+    # ui.run()
 
 
-if __name__ in {"__main__", "__mp_main__"}:
-    ui.run()
-    init()
+# if __name__ in {"__main__", "__mp_main__"}:
+#     ui.run()
+#     init()
