@@ -8,6 +8,7 @@ The project is splitted into three repositories:
 - **src**: script and code to run the prototype.
 - **log**: logs of the application when running. (include in .gitignore)
 - **config**: repository where the config TOML files are stored.
+- **template**: repository where the template for the LLM model are stored.
 
 ```
 .
@@ -29,36 +30,49 @@ The project is splitted into three repositories:
     └── template_chatml.jinja
 ```
 
-### GUI application and webservice
+### Clone the code
 
-#### GUI Application with NiceGUI
+1. Install git and python in your environnement
+2. Create a virtual environnement with your preferate tool.
+3. Clone the repot with : `git clone https://github.com/cfrancois7/civiclab.git`.
+4. Install the requirements with: `pip install -r requirements. txt`
 
-One application was build as demonstration.
+Once it is done, copy your data and the correct file to use the plateform. If you do not know what it is about, contact the owner: [cyril.francois.87@gmail.com](mailto:cyril.francois.87@gmail.com).
 
-It is based on NiceGUI, a framework based on FastAPI to develop web application.
-As a demonstrator, many features are not implemented.
-Also, if the application is working, it presents many error in server side during refreshing.
-However, it was tested and validated as harmless by the designer.
+### Run the application
 
-Contact the provider if the errors disturb the usage experience.
-
-To run the application, from the root of the project repository execute:
+#### The web server
+To run the application, you can execute the command:
 ```
-$ python src/app.py
-```
-
-Then open your browser and go to `localhost:8080`.
-See the log to see errors.
-
-*warning*: the application try to find automatically your browser by default. If not existing, e.g. you run it in WSL, a message of error appears: `Connection lost. Trying to reconnect`. Then, press `:q` to exit `w3m` and return on the application.
-
-The application works with a LLM in background. If you want to use the local model. Run it with the following command:
-
-```
-$ sh run_server.sh
+uvicorn src.main:app --reload --log-level debug --port 8000
 ```
 
-Adapt `run_server.sh` regarding your hardware.
+If you are in linux, you can use the bash script:
+```
+$ sh startup.sh
+```
+
+#### The local model
+
+This part is only for expert. It means you have already download and install a local LLM model.
+
+If it is the case, you can run your local model with this kind of command:
+
+```
+python -m vllm.entrypoints.openai.api_server\
+    --model TheBloke/NeuralBeagle14-7B-AWQ\
+    --chat-template ./config/template_chatml.jinja\
+    --quantization awq\
+    --trust-remote-code\
+    --max-model-len 2048
+```
+
+Or:
+```
+sh run_server.sh
+```
+
+Adapt the configs regarding your hardware.
 
 ### Contact
 Cyril François  
