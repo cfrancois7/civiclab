@@ -313,7 +313,7 @@ Voici ci-dessous un exemple d'application de l'extraction des idées principales
             spinner = ui.spinner(size="lg").bind_visibility(LLM_STATE, "on_going")
             ui.markdown("LLM model:")
             radio_llm = ui.radio(
-                ["local", "GPT-3.5 Turbo", "GPT-4 Turbo"], value="local"
+                ["GPT-3.5 Turbo", "GPT-4 Turbo"], value="GPT-3.5 Turbo"
             ).props("inline")
 
         ui.link(target="#prix").classes("center scroll-indicator")

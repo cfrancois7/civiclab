@@ -11,7 +11,7 @@ from .future import section_future
 from fastapi import FastAPI
 
 path_log = Path("./log").absolute()
-path_log.mkdir(exist_ok=True)
+path_log.mkdir(parents=True, exist_ok=True)
 logging.basicConfig(
     filename=path_log / "app.log", encoding="utf-8", level=logging.DEBUG
 )

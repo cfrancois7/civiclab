@@ -2,6 +2,7 @@ from nicegui import ui, events
 from io import StringIO
 import logging
 from pandas import read_csv
+from pathlib import Path
 
 from .style import link_target, section_heading
 from .header import add_head_html
@@ -10,10 +11,14 @@ from .header import add_head_html
 ##########
 # FUNCTION
 ##########
-def upload_csv(e: events.UploadEventArguments, data_state):
-    content = StringIO(e.content.read().decode("utf-8"))
-    data = read_csv(content, sep=separator_input.value, low_memory=False)
+def upload_csv(data_state):
+    # content = StringIO(e.content.read().decode("utf-8"))
+    # data = read_csv(content, sep=separator_input.value)
+    ui.notify("Data loading")
+    path_data = Path("./data/LA_FISCALITE_ET_LES_DEPENSES_PUBLIQUES.csv")
+    data = read_csv(path_data, low_memory=False)
     data_state.validated_data = data
+    data_state.to_display = data.iloc[:200]
     upload.check = True
     columns = list(data.columns)
     selected_columns.set_options(columns)
@@ -28,11 +33,8 @@ def update_table(data_state):
         for col in selected_columns.value
     ]
     table.columns = columns
-    table.rows = (
-        data_state.validated_data.iloc[:200]
-        .loc[:, selected_columns.value]
-        .to_dict("records")
-    )
+    table.rows = data_state.to_display.loc[:, selected_columns.value].to_dict("records")
+    logging.info("Success update table")
     table.update()
     dropdown_select.set_options(
         ["Select a column"] + [c["name"] for c in table.columns]
@@ -49,7 +51,6 @@ def update_table(data_state):
         button = ui.button(
             "Toggle fullscreen", icon="fullscreen", on_click=toggle
         ).props("flat")
-    logging.info(columns)
     data_state.refresh_all = True
 
 
@@ -80,7 +81,7 @@ def section_data(data_state):
 
     add_head_html()
     with ui.row().classes(
-        """min-h-screen no-wrap
+        """ no-wrap
             justify-center items-center flex-col md:flex-row
             py-20 px-8
             lg:px-16
@@ -104,14 +105,19 @@ def section_data(data_state):
                 les solutions de consultation.
                 """
             ).classes("gap-2 bold-links arrow-links text-lg")
-            separator_input = ui.input("Separator of the CSV", value=",")
-            upload = ui.upload(on_upload=lambda e: upload_csv(e, data_state))
+            # separator_input = ui.input("Separator of the CSV", value=",")
+            msg = """Attention: Le fichier a charger est relativement lourd (env. 500 Mo). Soyez patient.
+            En cas de bug, rafraichir la page."""
+            ui.markdown(msg).classes("italic gap-2 bold-links arrow-links text-lg")
+            upload = ui.button(
+                "Load contributions", on_click=lambda e: upload_csv(data_state)
+            )
             upload.check = False
 
             names = [""]
             ## IF OK LOAD THE MENU
 
-    with ui.row().classes("h-screen flex").bind_visibility(upload, "check"):
+    with ui.row().classes("flex").bind_visibility(upload, "check"):
 
         msg = """
         Le document `.csv` est constitué d'un ensemble de lignes et de colonnes.
