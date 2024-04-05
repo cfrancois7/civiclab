@@ -2,3 +2,5 @@ data
 log
 *__pycache__*
 config/openai.toml
+.git*
+**/*.pyc
