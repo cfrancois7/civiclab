@@ -31,10 +31,8 @@ def load_data(data_state):
     LOAD_STATE.on_going = True
 
     ui.notify("Data loading")
-    path_data = Path(
-        "./data/LA_FISCALITE_ET_LES_DEPENSES_PUBLIQUES.csv", low_memory=False
-    )
-    data_state.validated_data = read_csv(path_data)
+    path_data = Path("./data/LA_FISCALITE_ET_LES_DEPENSES_PUBLIQUES.csv")
+    data_state.validated_data = read_csv(path_data, low_memory=False)
     cols = data_state.validated_data.columns.tolist()
     select_col = cols[0]
 
@@ -159,7 +157,7 @@ def update_table(data_state):
     ]
     table_extract.columns = columns
     table_extract.rows = (
-        data_state.validated_data.loc[:, [select_col]].dropna().to_dict("records")
+        data_state.validated_data.loc[:200, [select_col]].dropna().to_dict("records")
     )
     table_extract.update()
 
